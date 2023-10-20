@@ -69,7 +69,7 @@ class KohonenNetwork:
 
                 self.updateWeights(neighbors, datapoint)
             
-        print("self.bmus:", self.bmus)
+        #print("self.bmus:", self.bmus)
 
     def visualize(self, countryIds, label):
         # each country will have the color representing its neuron
@@ -107,7 +107,66 @@ class KohonenNetwork:
 
         plt.show()
 
+    # grid where each neuron will show the countries associated with it
+    def visualize_grid(self, countryIds, avg_distances):
+        grid = np.empty(self.grid_size, dtype=object)
 
+        for i in range(self.grid_size[0]):
+            for j in range(self.grid_size[1]):
+                grid[i, j] = []
+
+        for id, neuron in self.bmus.items():
+            grid[neuron[0]][neuron[1]].append(countryIds[id])
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+        
+        # Display heatmap
+        cax = ax.matshow(avg_distances, cmap='viridis')
+
+        # Colorbar for the heatmap
+        fig.colorbar(cax)
+
+        for i in range(self.grid_size[0]):
+            for j in range(self.grid_size[1]):
+                text = '\n'.join(grid[i][j])
+                avg_dist = f"{avg_distances[i, j]:.2f}"  # Display the value up to 2 decimal places
+                combined_text = avg_dist + '\n' + text
+                ax.text(j, i, combined_text, ha='center', va='center', color='white', fontsize=8, bbox=dict(facecolor='black', alpha=0.5))
+        
+        ax.set_xticks(np.arange(self.grid_size[1]+1)-0.5, minor=True)
+        ax.set_yticks(np.arange(self.grid_size[0]+1)-0.5, minor=True)
+        ax.grid(which='minor', color='black', linestyle='-', linewidth=2)
+        ax.tick_params(which='both', size=0)
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+        ax.set_title("Countries associated with each neuron and Avg Distance Heatmap")
+
+        plt.gca().invert_yaxis()  # To make (0,0) start at the top-left
+        plt.show()
+
+
+
+
+    # get the average distances between neighboring neurons
+    def avg_neighbor_distances(self):
+        avg_distances = np.zeros(self.grid_size)
+        for i in range(self.grid_size[0]):
+            for j in range(self.grid_size[1]):
+                neighbors = self.kohonenRule((i,j), 2)  # considering direct neighbors only
+                total_distance = 0
+                count = 0
+                for neighbor in neighbors:
+                    total_distance += np.linalg.norm(self.weights[(i,j)] - self.weights[neighbor])
+                    count += 1
+                avg_distances[i, j] = total_distance / count if count != 0 else 0
+        return avg_distances
+
+    # get counts of datapoints associated with each neuron
+    def neuron_counts(self):
+        counts = {}
+        for neuron in self.weights.keys():
+            counts[neuron] = sum([1 for _, bmu in self.bmus.items() if bmu == neuron])
+        return counts
 
 
 # Example usage:
@@ -123,7 +182,7 @@ if __name__ == '__main__':
 
     dataset = []
     countryIds = []
-    with open("europe.csv", 'r') as file:
+    with open("tp4\europe.csv", 'r') as file:
         csv_reader = csv.reader(file)
         for row in csv_reader:
             dataset.append(row[1:])
@@ -131,7 +190,7 @@ if __name__ == '__main__':
     countryIds = countryIds[1:]
     sc = MinMaxScaler(feature_range=(0,1))
    
-    geographicData = [[row[0]] for row in dataset]  # Select the first and third columns
+    geographicData = [[float(row[0])] for row in dataset[1:]]  # Select the first and third columns
     economicalData = [[row[1], row[2], row[4]] for row in dataset] 
     socialData = [[row[3], row[5], row[6]] for row in dataset] 
 
@@ -139,22 +198,38 @@ if __name__ == '__main__':
     economicalData = sc.fit_transform(economicalData[1:]) 
     socialData = sc.fit_transform(socialData[1:])   
     geographicData = sc.fit_transform(geographicData[1:])
-    print(geographicData)
 
     somEconomical = KohonenNetwork(economicalSize, grid_size, learning_rate, epochs)
     somEconomical.train(economicalData)
-   # somEconomical.visualize(countryIds, "Economical Features")
+    # somEconomical.visualize(countryIds, "Economical Features")
 
     somSocial = KohonenNetwork(socialSize, grid_size, learning_rate, epochs)
     somSocial.train(socialData)
-  #  somSocial.visualize(countryIds, "Social Features")
+    #  somSocial.visualize(countryIds, "Social Features")
 
     somgeographic = KohonenNetwork(geographicSize, grid_size, learning_rate, epochs)
     somgeographic.train(geographicData)
-    somgeographic.visualize(countryIds, "Geographic Features")
+    #somgeographic.visualize(countryIds, "Geographic Features")
 
 
 
     # missing this 
     # Realizar un gráfico que muestre las distancias promedio entre neuronas vecinas. 
     # Analizar la cantidad de elementos que fueron asociados a cada neurona.
+
+    avg_distances = somgeographic.avg_neighbor_distances()
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(avg_distances, annot=True, cmap='viridis')
+    plt.title("Average Distances between Neighboring Neurons")
+    plt.show()
+
+    neuron_count = somgeographic.neuron_counts()
+    for neuron, count in neuron_count.items():
+        print(f"Neuron {neuron} has {count} countries associated.")
+
+    somgeographic = KohonenNetwork(geographicSize, grid_size, learning_rate, epochs)
+    somgeographic.train(geographicData)
+    avg_distances = somgeographic.avg_neighbor_distances()
+    somgeographic.visualize_grid(countryIds, avg_distances)
+
+
