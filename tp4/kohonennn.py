@@ -190,34 +190,35 @@ if __name__ == '__main__':
     countryIds = countryIds[1:]
     sc = MinMaxScaler(feature_range=(0,1))
    
-    geographicData = [[float(row[0])] for row in dataset[1:]]  # Select the first and third columns
-    economicalData = [[row[1], row[2], row[4]] for row in dataset] 
-    socialData = [[row[3], row[5], row[6]] for row in dataset] 
+    geographicData = [[float(row[0])] for row in dataset[1:]]
+    economicalData = [[row[1], row[2], row[4]] for row in dataset[1:]]
+    socialData = [[row[3], row[5], row[6]] for row in dataset[1:]]
+
 
     # does scalling and normalization
     economicalData = sc.fit_transform(economicalData[1:]) 
     socialData = sc.fit_transform(socialData[1:])   
     geographicData = sc.fit_transform(geographicData[1:])
 
-    somEconomical = KohonenNetwork(economicalSize, grid_size, learning_rate, epochs)
+    """ somEconomical = KohonenNetwork(economicalSize, grid_size, learning_rate, epochs)
     somEconomical.train(economicalData)
-    # somEconomical.visualize(countryIds, "Economical Features")
+    #somEconomical.visualize(countryIds, "Economical Features")
 
     somSocial = KohonenNetwork(socialSize, grid_size, learning_rate, epochs)
     somSocial.train(socialData)
-    #  somSocial.visualize(countryIds, "Social Features")
+    #somSocial.visualize(countryIds, "Social Features")
 
     somgeographic = KohonenNetwork(geographicSize, grid_size, learning_rate, epochs)
     somgeographic.train(geographicData)
     #somgeographic.visualize(countryIds, "Geographic Features")
-
+ """
 
 
     # missing this 
     # Realizar un gráfico que muestre las distancias promedio entre neuronas vecinas. 
     # Analizar la cantidad de elementos que fueron asociados a cada neurona.
 
-    avg_distances = somgeographic.avg_neighbor_distances()
+    """ avg_distances = somgeographic.avg_neighbor_distances()
     plt.figure(figsize=(10, 7))
     sns.heatmap(avg_distances, annot=True, cmap='viridis')
     plt.title("Average Distances between Neighboring Neurons")
@@ -230,6 +231,26 @@ if __name__ == '__main__':
     somgeographic = KohonenNetwork(geographicSize, grid_size, learning_rate, epochs)
     somgeographic.train(geographicData)
     avg_distances = somgeographic.avg_neighbor_distances()
-    somgeographic.visualize_grid(countryIds, avg_distances)
+    somgeographic.visualize_grid(countryIds, avg_distances) """
 
+    # ... [Keep everything before this unchanged]
 
+    # Combine the data
+    combinedData = np.hstack([geographicData, economicalData, socialData])
+
+    # Set learning rate
+    learning_rate = 0.5
+
+    # Different grid sizes for visualization
+    grid_sizes = [(5,5)]
+
+    for grid_size in grid_sizes:
+        combined_size = geographicSize + economicalSize + socialSize
+        epochs = 50 * combined_size
+
+        somCombined = KohonenNetwork(socialSize, grid_size, learning_rate, epochs)
+        somCombined.train(socialData)
+
+        # Visualizing the SOM
+        avg_distances = somCombined.avg_neighbor_distances()
+        somCombined.visualize_grid(countryIds, avg_distances)
