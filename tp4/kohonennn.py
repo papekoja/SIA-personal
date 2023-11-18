@@ -128,7 +128,7 @@ class KohonenNetwork:
 
         for i in range(self.grid_size[0]):
             for j in range(self.grid_size[1]):
-                text = '\n'.join(grid[i][j])
+                text = str(len(grid[i, j]))
                 avg_dist = f"{avg_distances[i, j]:.2f}"  # Display the value up to 2 decimal places
                 combined_text = avg_dist + '\n' + text
                 ax.text(j, i, combined_text, ha='center', va='center', color='white', fontsize=8, bbox=dict(facecolor='black', alpha=0.5))
@@ -139,13 +139,10 @@ class KohonenNetwork:
         ax.tick_params(which='both', size=0)
         ax.set_xticklabels([])
         ax.set_yticklabels([])
-        ax.set_title("Countries associated with each neuron and Avg Distance Heatmap")
+        ax.set_title("Number of countries associated with each neuron and Avg Distance Heatmap")
 
         plt.gca().invert_yaxis()  # To make (0,0) start at the top-left
         plt.show()
-
-
-
 
     # get the average distances between neighboring neurons
     def avg_neighbor_distances(self):
@@ -167,6 +164,11 @@ class KohonenNetwork:
         for neuron in self.weights.keys():
             counts[neuron] = sum([1 for _, bmu in self.bmus.items() if bmu == neuron])
         return counts
+
+    # Implementation of get_num_data_points
+    def get_num_data_points(self, i, j):
+        neuron_position = (i, j)
+        return self.neuron_counts().get(neuron_position, 0)
 
 
 # Example usage:
@@ -248,8 +250,8 @@ if __name__ == '__main__':
         combined_size = geographicSize + economicalSize + socialSize
         epochs = 50 * combined_size
 
-        somCombined = KohonenNetwork(socialSize, grid_size, learning_rate, epochs)
-        somCombined.train(socialData)
+        somCombined = KohonenNetwork(combined_size, grid_size, learning_rate, epochs)
+        somCombined.train(combinedData)
 
         # Visualizing the SOM
         avg_distances = somCombined.avg_neighbor_distances()
