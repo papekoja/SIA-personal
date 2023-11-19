@@ -32,7 +32,7 @@ font_data = read_font_data('TP5/font.h')
 # Convert the font data to a NumPy array
 X = convert_dataset(font_data)
 
-""" # Print the first pattern
+""" # Print the first pattern 
 print("First pattern:")
 print(X[0])
 
@@ -42,12 +42,12 @@ plt.show() """
 
 # Define the size of the input, hidden layers, and latent layer
 input_size = len(X[0])  # Should be 7x5 for your character patterns
-hidden_layers = [10]  # Adjust the number and size of hidden layers as needed
+hidden_layers = [10, 10, 10]  # Adjust the number and size of hidden layers as needed
 latent_size = 5  # Size of the compressed representation
 
 # Create and train an Autoencoder
 autoencoder = Autoencoder(input_size=input_size, hidden_layers=hidden_layers, latent_size=latent_size)
-autoencoder.train(X, epochs=200, learning_rate=0.1)
+autoencoder.train(X, epochs=200, learning_rate=0.03)
 
 # Reconstruct data
 reconstructed_X = autoencoder.reconstruct(X)
