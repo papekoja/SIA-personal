@@ -1,88 +1,86 @@
 import numpy as np
 
-class MLP:
-    def __init__(self, input_size, hidden_layers, output_size):
-        # Initialization of parameters
-        self.input_size = input_size
-        self.hidden_layers = hidden_layers
-        self.output_size = output_size
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
 
-        # Initialization of weights and biases for all layers
-        self.weights = []
-        self.biases = []
+def sigmoid_derivative(x):
+    return x * (1 - x)
 
-        # Create a list of layer sizes (input, hidden layers, output)
-        layer_sizes = [input_size] + hidden_layers + [output_size]
+class MultilayerPerceptron:
+    def __init__(self, input_size, hidden_size, output_size):
+        # Initialize weights and biases
+        self.weights_input_hidden = np.random.rand(input_size, hidden_size)
+        self.bias_hidden = np.random.rand(hidden_size)
+        self.weights_hidden_output = np.random.rand(hidden_size, output_size)
+        self.bias_output = np.random.rand(output_size)
 
-        # Initialize weights and biases for each layer
-        for i in range(len(layer_sizes) - 1):
-            weight_matrix = np.random.randn(layer_sizes[i], layer_sizes[i + 1])
-            bias_vector = np.zeros((1, layer_sizes[i + 1]))
-            self.weights.append(weight_matrix)
-            self.biases.append(bias_vector)
+    def forward_propagation(self, inputs):
+        # Forward pass through the network
+        self.hidden_layer_input = np.dot(inputs, self.weights_input_hidden) + self.bias_hidden
+        self.hidden_layer_output = sigmoid(self.hidden_layer_input)
+        self.output_layer_input = np.dot(self.hidden_layer_output, self.weights_hidden_output) + self.bias_output
+        self.output_layer_output = sigmoid(self.output_layer_input)
+        return self.output_layer_output
 
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+    def train(self, inputs, targets, epochs, learning_rate):
+        for epoch in range(epochs):
+            # Forward propagation
+            outputs = self.forward_propagation(inputs)
 
-    def sigmoid_derivative(self, x):
-        return x * (1 - x)
-
-    def forward(self, x):
-        # Forward propagation
-        self.layer_outputs = [x]
-        for i in range(len(self.weights)):
-            x = self.sigmoid(np.dot(x, self.weights[i]) + self.biases[i])
-            self.layer_outputs.append(x)
-        return x
-
-    def backward(self, x, y, learning_rate):
-        # Backpropagation of error
-        error = y - self.layer_outputs[-1]
-        for i in reversed(range(len(self.weights))):
-            delta = error * self.sigmoid_derivative(self.layer_outputs[i + 1])
-
-            if i == 0:
-                # If it's the first layer, use the input instead of the previous layer's output
-                layer_output_reshaped = x.reshape(1, -1)
-            else:
-                # Reshape previous layer's output for correct matrix multiplication
-                layer_output_reshaped = self.layer_outputs[i].reshape(1, -1)
-
-            # Calculate the gradient
-            weight_gradient = np.dot(layer_output_reshaped.T, delta)
-            bias_gradient = delta
-
-            # Update error for the next layer
-            error = np.dot(delta, self.weights[i].T)
+            # Backward propagation
+            output_errors = targets - outputs
+            output_deltas = output_errors * sigmoid_derivative(outputs)
+            hidden_errors = np.dot(output_deltas, self.weights_hidden_output.T)
+            hidden_deltas = hidden_errors * sigmoid_derivative(self.hidden_layer_output)
 
             # Update weights and biases
-            self.weights[i] += weight_gradient * learning_rate
-            self.biases[i] += np.sum(bias_gradient, axis=0, keepdims=True) * learning_rate
+            self.weights_hidden_output += learning_rate * np.dot(self.hidden_layer_output.T, output_deltas)
+            self.bias_output += learning_rate * np.sum(output_deltas, axis=0)  # Removed keepdims=True
+
+            self.weights_input_hidden += learning_rate * np.dot(inputs.T, hidden_deltas)
+            self.bias_hidden += learning_rate * np.sum(hidden_deltas, axis=0)  # Removed keepdims=True
 
 
 
-    def train(self, X, y, epochs, learning_rate):
-        # Training the network
-        for epoch in range(epochs):
-            for x, target in zip(X, y):
-                self.forward(x)
-                self.backward(x, target, learning_rate)
+    def predict(self, inputs):
+        return self.forward_propagation(inputs)
 
-    def predict(self, X):
-        # Making predictions
-        return np.array([self.forward(x) for x in X])
+def train_xor(mlp, epochs, learning_rate):
+    # XOR input and output
+    X = np.array([[0, 0],
+                  [0, 1],
+                  [1, 0],
+                  [1, 1]])
+    Y = np.array([[0],
+                  [1],
+                  [1],
+                  [0]])
 
-# Example usage
-if __name__ == "__main__":
-    # Training data
-    X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
-    y = np.array([[0], [1], [1], [0]])
+    # Train the network
+    mlp.train(X, Y, epochs, learning_rate)
 
-    # Create and train an MLP with two hidden layers of 3 and 2 neurons
-    mlp = MLP(input_size=2, hidden_layers=[3, 2], output_size=1)
-    mlp.train(X, y, epochs=10000, learning_rate=0.1)
+def test_xor(mlp):
+    # Test data (same as training data for XOR)
+    X_test = np.array([[0, 0],
+                       [0, 1],
+                       [1, 0],
+                       [1, 1]])
+    # Predictions
+    predictions = mlp.predict(X_test)
+    # Convert predictions to binary values
+    predictions = np.round(predictions)
+    return predictions
 
-    # Make predictions
-    predictions = mlp.predict(X)
-    print("Predictions:")
-    print(predictions)
+""" # Initialize the MLP
+input_size = 2
+hidden_size = 2  # Can experiment with this size
+output_size = 1
+mlp = MultilayerPerceptron(input_size, hidden_size, output_size)
+
+# Train the MLP
+train_xor(mlp, epochs=10000, learning_rate=0.1)
+
+# Test the MLP
+predictions = test_xor(mlp)
+print("Predictions:")
+print(predictions) """

@@ -26,33 +26,23 @@ def convert_dataset(font_data):
         dataset.append(flattened_pattern)
     return np.array(dataset)
 
-# Read the font data
+# Read and convert the font data
 font_data = read_font_data('TP5/font.h')
-
-# Convert the font data to a NumPy array
 X = convert_dataset(font_data)
 
-""" # Print the first pattern 
-print("First pattern:")
-print(X[0])
+# Define the size of the input and latent layer
+input_size = len(X[0])  # Size of the input data
+hidden_size = 15        # Size of the compressed representation
 
-# Print first pattern as an image
-plt.imshow(X[0].reshape(7, 5), cmap='gray')
-plt.show() """
+# Initialize the Autoencoder
+autoencoder = Autoencoder(input_size=input_size, hidden_size=hidden_size)
 
-# Define the size of the input, hidden layers, and latent layer
-input_size = len(X[0])  # Should be 7x5 for your character patterns
-hidden_layers = [10, 10, 10]  # Adjust the number and size of hidden layers as needed
-latent_size = 5  # Size of the compressed representation
+# Train the Autoencoder
+autoencoder.train(X, epochs=200, learning_rate=0.1)
 
-# Create and train an Autoencoder
-autoencoder = Autoencoder(input_size=input_size, hidden_layers=hidden_layers, latent_size=latent_size)
-autoencoder.train(X, epochs=200, learning_rate=0.03)
-
-# Reconstruct data
+# Reconstruct data using the trained Autoencoder
 reconstructed_X = autoencoder.reconstruct(X)
-print("Reconstructed Data:")
-print(reconstructed_X)
+
 
 def plot_images(original, reconstructed, num_images=10):
     plt.figure(figsize=(20, 4))
@@ -72,4 +62,4 @@ def plot_images(original, reconstructed, num_images=10):
         ax.get_yaxis().set_visible(False)
     plt.show()
 
-plot_images(X, reconstructed_X)  # Assuming X is your original data
+plot_images(X, reconstructed_X)
