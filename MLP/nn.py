@@ -22,11 +22,7 @@ class MultilayerPerceptron:
         self.output_layer_output = sigmoid(self.output_layer_input)
         return self.output_layer_output
 
-    def train(self, inputs, targets, epochs, learning_rate):
-        for epoch in range(epochs):
-            # Forward propagation
-            outputs = self.forward_propagation(inputs)
-
+    def backward_propagation(self, inputs, outputs, targets, learning_rate):
             # Backward propagation
             output_errors = targets - outputs
             output_deltas = output_errors * sigmoid_derivative(outputs)
@@ -40,47 +36,13 @@ class MultilayerPerceptron:
             self.weights_input_hidden += learning_rate * np.dot(inputs.T, hidden_deltas)
             self.bias_hidden += learning_rate * np.sum(hidden_deltas, axis=0)  # Removed keepdims=True
 
+            # returns delta for the hidden layer for use un the autoencoder to backpropagate through the encoder
+            return hidden_deltas
 
+
+    def train(self, inputs, targets, epochs, learning_rate):
+        for epoch in range(epochs):
+            self.backward_propagation(inputs, self.forward_propagation(inputs), targets, learning_rate)
 
     def predict(self, inputs):
         return self.forward_propagation(inputs)
-
-def train_xor(mlp, epochs, learning_rate):
-    # XOR input and output
-    X = np.array([[0, 0],
-                  [0, 1],
-                  [1, 0],
-                  [1, 1]])
-    Y = np.array([[0],
-                  [1],
-                  [1],
-                  [0]])
-
-    # Train the network
-    mlp.train(X, Y, epochs, learning_rate)
-
-def test_xor(mlp):
-    # Test data (same as training data for XOR)
-    X_test = np.array([[0, 0],
-                       [0, 1],
-                       [1, 0],
-                       [1, 1]])
-    # Predictions
-    predictions = mlp.predict(X_test)
-    # Convert predictions to binary values
-    predictions = np.round(predictions)
-    return predictions
-
-""" # Initialize the MLP
-input_size = 2
-hidden_size = 2  # Can experiment with this size
-output_size = 1
-mlp = MultilayerPerceptron(input_size, hidden_size, output_size)
-
-# Train the MLP
-train_xor(mlp, epochs=10000, learning_rate=0.1)
-
-# Test the MLP
-predictions = test_xor(mlp)
-print("Predictions:")
-print(predictions) """

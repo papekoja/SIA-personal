@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from autoencoder import Autoencoder
+from  src.models import Autoencoder
 
 def read_font_data(file_path):
     font_data = []
