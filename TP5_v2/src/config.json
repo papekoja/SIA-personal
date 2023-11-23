@@ -1,17 +1,19 @@
 {
 	"file": "TP5_v2/src/font002.txt",
+
+
 	"system_threshold": 1,
 	"training_ratio": 1,
 	"data_random_seed": 0,
 	"normalize": false,
 
-	"system": "tanh",
-	"beta": 0.9,
+	"system": "exp",
+	"beta": 0.5,
 
 	"momentum": true,
 	"alpha": 0.9,
 
-	"optimizer": "Powell",
+	"optimizer": "None",
 	"optimizer_iter": 10,
 	"optimizer_fev": 150000,
 
