@@ -1,0 +1,27 @@
+{
+	"file": "",
+
+
+	"system_threshold": 1,
+	"training_ratio": 1,
+	"data_random_seed": 0,
+
+	"system": "exp",
+	"beta": 0.5,
+
+	"momentum": true,
+	"momentum_alpha": 0.9,
+
+	"mid_layout": [25],
+	"latent_dim": 2,
+
+	"eta": 1e-3,
+	"error_threshold": 1,
+	"epochs": 1000,
+
+	"denoising": {
+		"pm": 0.25
+	},
+
+	"plot": true
+}
