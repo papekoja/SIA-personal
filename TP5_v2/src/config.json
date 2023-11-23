@@ -5,29 +5,19 @@
 	"system_threshold": 1,
 	"training_ratio": 1,
 	"data_random_seed": 0,
-	"normalize": false,
 
 	"system": "exp",
 	"beta": 0.5,
 
 	"momentum": true,
-	"alpha": 0.9,
-
-	"optimizer": "None",
-	"optimizer_iter": 10,
-	"optimizer_fev": 150000,
+	"momentum_alpha": 0.9,
 
 	"mid_layout": [25],
 	"latent_dim": 2,
-	"randomize_w": true,
-	"randomize_w_ref": 0.5,
-	"randomize_w_by_len": false,
 
 	"eta": 1e-3,
 	"error_threshold": 1,
 	"epochs": 1000,
-	"trust": 0.5,
-	"use_trust": false,
 
 	"denoising": {
 		"pm": 0.25

@@ -9,7 +9,7 @@ class SimplePerceptron:
         self.is_hidden = is_hidden
         self.activation_fn = activation_fn
         self.derivative_activation_fn = derivative_activation_fn
-        self.weights = np.zeros(input_dimension)
+        self.weights = np.random.uniform(-0.5, 0.5, input_dimension)
         self.input_data = np.zeros(input_dimension)
         self.previous_delta_weights = np.zeros(input_dimension)
         self.use_momentum = use_momentum
@@ -28,13 +28,6 @@ class SimplePerceptron:
         if is_training:
             self.input_data = input_array
         return self.activation_fn(np.dot(input_array, self.weights))
-
-    def randomize_weights(self, reference_value: float, normalize_by_length: bool = False) -> None:
-        if normalize_by_length:
-            range_value = np.sqrt(1 / len(self.weights))
-            self.weights = np.random.uniform(-range_value, range_value, len(self.weights))
-        else:
-            self.weights = np.random.uniform(-reference_value, reference_value, len(self.weights))
 
     def update_weights(self):
         self.weights += self.weight_accumulator

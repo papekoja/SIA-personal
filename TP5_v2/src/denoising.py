@@ -31,10 +31,6 @@ dataset, rest = parser.extract_subset(full_dataset, config["training_ratio"])
 auto_encoder = ae.AutoEncoder(*act_funcs, config["mid_layout"], len(dataset[0]), config["latent_dim"],
                               config["momentum"], config["alpha"])
 
-# randomize w if asked
-if bool(config["randomize_w"]):
-    auto_encoder.initialize_weights(config["randomize_w_ref"], config["randomize_w_by_len"])
-
 plot_bool = bool(config["plot"])
 
 # initialize plotter
@@ -44,47 +40,38 @@ if plot_bool:
 # get pm from config
 pm: float = config["denoising"]["pm"]
 
-# use minimizer if asked
-if config["optimizer"] != "None" and config["optimizer"] != "":
-    # randomize the dataset
+# vars for plotting
+ep_list = []
+err_list = []
+
+# train auto-encoder
+for ep in range(config["epochs"]):
+
+    # randomize the dataset everytime
     dataset = parser.randomize_data(dataset, config["data_random_seed"])
-    # train with minimize
-    auto_encoder.train_with_minimization(parser.add_noise_dataset(dataset, pm), dataset, config["trust"], config["use_trust"], config["optimizer"], config["optimizer_iter"], config["optimizer_fev"])
-    # plot error vs opt step
-    tools.plot_values(range(len(auto_encoder.optimization_errors)), 'opt step', auto_encoder.optimization_errors, 'error', sci_y=False)
-else:
-    # vars for plotting
-    ep_list = []
-    err_list = []
 
-    # train auto-encoder
-    for ep in range(config["epochs"]):
+    # train for this epoch
+    for data in dataset:
+        auto_encoder.train(parser.add_noise(data, pm), data, config["eta"])
 
-        # randomize the dataset everytime
-        dataset = parser.randomize_data(dataset, config["data_random_seed"])
+    # apply the changes
+    auto_encoder.update_weights()
 
-        # train for this epoch
-        for data in dataset:
-            auto_encoder.train(parser.add_noise(data, pm), data, config["eta"])
+    # calculate error
+    error: float = auto_encoder.compute_error(parser.add_noise_dataset(dataset, pm), dataset)
+    if error < config["error_threshold"]:
+        break
 
-        # apply the changes
-        auto_encoder.update_weights()
+    if ep % 50 == 0:
+        print(f'Iteration {ep}, error {error}')
 
-        # calculate error
-        error: float = auto_encoder.compute_error(parser.add_noise_dataset(dataset, pm), dataset, config["trust"], config["use_trust"])
-        if error < config["error_threshold"]:
-            break
+    # add error to list
+    ep_list.append(ep)
+    err_list.append(error)
 
-        if ep % 50 == 0:
-            print(f'Iteration {ep}, error {error}')
-
-        # add error to list
-        ep_list.append(ep)
-        err_list.append(error)
-    
-    # plot error vs epoch
-    if plot_bool:
-        tools.plot_values(ep_list, 'epoch', err_list, 'error', sci_y=False)
+# plot error vs epoch
+if plot_bool:
+    tools.plot_values(ep_list, 'epoch', err_list, 'error', sci_y=False)
 
 # labels for printing (use with full_dataset)
 labels: [] = ['@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\', ']', '^', '_']

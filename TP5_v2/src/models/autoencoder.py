@@ -1,7 +1,5 @@
 import numpy as np
 import TP5_v2.src.models.complex as cp
-import TP5_v2.src.utils.functions as utils
-from scipy import optimize
 
 
 class AutoEncoder:
@@ -44,57 +42,11 @@ class AutoEncoder:
                                                       np.empty(output_dimension), np.empty(output_dimension))
         return self.encoder.backpropagate(expected_output, learning_rate, sup_w, sup_delta)
 
-    def initialize_weights(self, reference, normalize_by_length=False):
-        self.encoder.randomize_weights(reference, normalize_by_length)
-        self.decoder.randomize_weights(reference, normalize_by_length)
-
     def update_weights(self):
         self.encoder.update_weights()
         self.decoder.update_weights()
 
-    def compute_error(self, input_data, output_data, threshold, apply_threshold):
-        activation = utils.discrete(self.forward_pass(input_data)[:, 1:], threshold, apply_threshold)
+    def compute_error(self, input_data, output_data):
+        activation = self.forward_pass(input_data)[:, 1:]
         target_output = output_data[:, 1:]
         return np.linalg.norm(target_output - activation) ** 2 / len(target_output)
-
-    # Optimization Methods
-
-    def flatten_weights(self):
-        weights = []
-        for layer in self.encoder.network:
-            for perceptron in layer:
-                weights.append(perceptron.weights)
-        for layer in self.decoder.network:
-            for perceptron in layer:
-                weights.append(perceptron.weights)
-        return np.hstack(np.array(weights, dtype=object))
-
-    def reshape_weights(self, flat_weights):
-        weight_index = 0
-        for layer in self.encoder.network:
-            for perceptron in layer:
-                perceptron.set_weights(flat_weights[weight_index:weight_index + len(perceptron.weights)])
-                weight_index += len(perceptron.weights)
-        for layer in self.decoder.network:
-            for perceptron in layer:
-                perceptron.set_weights(flat_weights[weight_index:weight_index + len(perceptron.weights)])
-                weight_index += len(perceptron.weights)
-
-    def error_for_minimization(self, flat_weights, input_data, output_data, threshold, apply_threshold):
-        self.reshape_weights(flat_weights)
-        error = self.compute_error(input_data, output_data, threshold, apply_threshold)
-        self.optimization_errors.append(error)
-        return error
-
-    def train_with_minimization(self, input_data, output_data, threshold, apply_threshold, optimization_method,
-                                max_iterations, max_function_evals):
-        flat_initial_weights = self.flatten_weights()
-        optimization_result = optimize.minimize(self.error_for_minimization, flat_initial_weights,
-                                                method=optimization_method,
-                                                args=(input_data, output_data, threshold, apply_threshold),
-                                                options={'maxiter': max_iterations, 'maxfev': max_function_evals,
-                                                         'disp': True})
-        self.reshape_weights(optimization_result.x)
-        final_error = optimization_result.fun
-        print(f'Final error: {final_error}')
-        return final_error

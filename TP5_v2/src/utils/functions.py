@@ -17,17 +17,3 @@ def get_activation_functions(name: str, beta: float):
     }
 
     return act_funcs_dict[name], act_funcs_der_dict[name]
-
-
-def function(x, trust) -> int:
-    if x >= trust:
-        return 1
-    if x <= -trust:
-        return -1
-    return 0
-
-
-def discrete(data: np.ndarray, trust: float, use_trust: bool) -> np.ndarray:
-    if not use_trust:
-        return data
-    return np.vectorize(function)(data, trust)

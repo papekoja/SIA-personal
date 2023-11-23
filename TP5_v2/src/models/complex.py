@@ -2,6 +2,7 @@ import numpy as np
 from typing import List
 import TP5_v2.src.models.simple as simple_perceptron_module
 
+
 class ComplexPerceptron:
     def __init__(self, activation_function, derivative_activation_function,
                  network_layout: List[int], input_dimension: int,
@@ -27,17 +28,18 @@ class ComplexPerceptron:
         upper_weights = initial_upper_weights
         upper_deltas = initial_upper_deltas
         for layer in reversed(self.network):
-            upper_weights, upper_deltas = zip(*[perceptron.backpropagate(target_output, upper_weights, upper_deltas, learning_rate)
-                                                for perceptron in layer])
+            upper_weights, upper_deltas = zip(
+                *[perceptron.backpropagate(target_output, upper_weights, upper_deltas, learning_rate)
+                  for perceptron in layer])
             upper_weights = np.array(upper_weights)
             upper_deltas = np.array(upper_deltas)
 
         return upper_weights, upper_deltas
 
-    def randomize_weights(self, reference_value: float, normalize_by_length: bool = False) -> None:
+    def randomize_weights(self, reference_value: float) -> None:
         for layer in self.network:
             for perceptron in layer:
-                perceptron.randomize_weights(reference_value, normalize_by_length)
+                perceptron.randomize_weights(reference_value)
 
     def update_weights(self) -> None:
         for layer in self.network:
