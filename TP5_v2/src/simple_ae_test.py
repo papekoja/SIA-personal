@@ -34,7 +34,7 @@ auto_encoder = ae.AutoEncoder(*act_funcs, config["mid_layout"], len(dataset[0]),
 
 # randomize w if asked
 if bool(config["randomize_w"]):
-    auto_encoder.randomize_w(config["randomize_w_ref"], config["randomize_w_by_len"])
+    auto_encoder.initialize_weights(config["randomize_w_ref"], config["randomize_w_by_len"])
 
 plot_bool = bool(config["plot"])
 
@@ -49,10 +49,10 @@ if config["optimizer"] != "None" and config["optimizer"] != "":
     # randomize the dataset
     dataset = parser.randomize_data(dataset, config["data_random_seed"])
     # train with minimize
-    auto_encoder.train_minimizer(dataset, dataset, config["trust"], config["use_trust"], config["optimizer"],
+    auto_encoder.train_with_minimization(dataset, dataset, config["trust"], config["use_trust"], config["optimizer"],
                                  config["optimizer_iter"], config["optimizer_fev"])
     # plot error vs opt step
-    tools.plot_values(range(len(auto_encoder.opt_err)), 'opt step', auto_encoder.opt_err, 'error', sci_y=False)
+    tools.plot_values(range(len(auto_encoder.optimization_errors)), 'opt step', auto_encoder.optimization_errors, 'error', sci_y=False)
 else:
     # vars for plotting
     ep_list = []
@@ -69,10 +69,10 @@ else:
             auto_encoder.train(data, data, config["eta"])
 
         # apply the changes
-        auto_encoder.update_w()
+        auto_encoder.update_weights()
 
         # calculate error
-        err = auto_encoder.error(dataset, dataset, config["trust"], config["use_trust"])
+        err = auto_encoder.compute_error(dataset, dataset, config["trust"], config["use_trust"])
 
         if err < config["error_threshold"]:
             break
@@ -95,7 +95,7 @@ labels: [] = ['@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', '
 # show latent space given the input
 aux: [] = []
 for data in full_dataset:
-    aux.append(auto_encoder.activation_to_latent_space(data))
+    aux.append(auto_encoder.encode(data))
 latent_space: np.ndarray = np.array(aux)
 # plot latent space
 tools.plot_latent_space(latent_space, labels, -1, 1)
@@ -116,7 +116,7 @@ while True:
 
     # generate a new letter not from the dataset. Creates a new Z between the first two
     new_latent_space: np.ndarray = np.sum([latent_space[index_1], latent_space[index_2]], axis=0) / 2
-    new_letter: np.ndarray = auto_encoder.activation_from_latent_space(new_latent_space)
+    new_letter: np.ndarray = auto_encoder.decode(new_latent_space)
 
     tools.print_pattern(full_dataset[index_1, 1:], LETTER_WIDTH)
     print('\n--------------------------------------------')

@@ -33,7 +33,7 @@ auto_encoder = ae.AutoEncoder(*act_funcs, config["mid_layout"], len(dataset[0]),
 
 # randomize w if asked
 if bool(config["randomize_w"]):
-    auto_encoder.randomize_w(config["randomize_w_ref"], config["randomize_w_by_len"])
+    auto_encoder.initialize_weights(config["randomize_w_ref"], config["randomize_w_by_len"])
 
 plot_bool = bool(config["plot"])
 
@@ -49,9 +49,9 @@ if config["optimizer"] != "None" and config["optimizer"] != "":
     # randomize the dataset
     dataset = parser.randomize_data(dataset, config["data_random_seed"])
     # train with minimize
-    auto_encoder.train_minimizer(parser.add_noise_dataset(dataset, pm), dataset, config["trust"], config["use_trust"], config["optimizer"], config["optimizer_iter"], config["optimizer_fev"])
+    auto_encoder.train_with_minimization(parser.add_noise_dataset(dataset, pm), dataset, config["trust"], config["use_trust"], config["optimizer"], config["optimizer_iter"], config["optimizer_fev"])
     # plot error vs opt step
-    tools.plot_values(range(len(auto_encoder.opt_err)), 'opt step', auto_encoder.opt_err, 'error', sci_y=False)
+    tools.plot_values(range(len(auto_encoder.optimization_errors)), 'opt step', auto_encoder.optimization_errors, 'error', sci_y=False)
 else:
     # vars for plotting
     ep_list = []
@@ -68,10 +68,10 @@ else:
             auto_encoder.train(parser.add_noise(data, pm), data, config["eta"])
 
         # apply the changes
-        auto_encoder.update_w()
+        auto_encoder.update_weights()
 
         # calculate error
-        error: float = auto_encoder.error(parser.add_noise_dataset(dataset, pm), dataset, config["trust"], config["use_trust"])
+        error: float = auto_encoder.compute_error(parser.add_noise_dataset(dataset, pm), dataset, config["trust"], config["use_trust"])
         if error < config["error_threshold"]:
             break
 
@@ -100,7 +100,7 @@ for pm_it in pm_values:
     for data in full_dataset:
         aux: [] = []
         for i in range(PM_ITER):
-            noisy_res = auto_encoder.activation(parser.add_noise(data, pm_it))
+            noisy_res = auto_encoder.forward_pass(parser.add_noise(data, pm_it))
             aux.append(np.sum(abs(np.around(noisy_res[1:]) - data[1:])) / len(data[1:]))
         letter_err_mean = sts.mean(aux)
         err_mean.append(letter_err_mean)

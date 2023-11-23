@@ -1,127 +1,100 @@
 import numpy as np
-import TP5_v2.src.utils.functions as f
 import TP5_v2.src.models.complex as cp
-
+import TP5_v2.src.utils.functions as utils
 from scipy import optimize
 
 
-# uses 2 complex perceptron
-class AutoEncoder(object):
+class AutoEncoder:
+    def __init__(self, activation_fn, derived_activation_fn, layer_sizes, input_dim, latent_dim,
+                 use_momentum=False, momentum_alpha=0.9):
+        self.input_dim = input_dim
+        self.latent_dim = latent_dim
 
-    def __init__(self, activation_function, activation_function_derived,
-                 layout: [int], data_dim: int, latent_dim: int,
-                 momentum: bool = False, mom_alpha: float = 0.9):
-        self.data_dim: int = data_dim
-        self.latent_dim: int = latent_dim
+        encoder_layers = layer_sizes.copy()
+        encoder_layers.append(latent_dim)
+        self.encoder = cp.ComplexPerceptron(activation_fn, derived_activation_fn, encoder_layers,
+                                            input_dim, fully_hidden=True, enable_momentum=use_momentum,
+                                            momentum_coefficient=momentum_alpha)
 
-        encoder_layout: [] = layout.copy()
-        encoder_layout.append(latent_dim)
-        self.encoder = cp.ComplexPerceptron(activation_function, activation_function_derived, encoder_layout,
-                                            data_dim, full_hidden=True, momentum=momentum, mom_alpha=mom_alpha)
+        decoder_layers = layer_sizes[::-1]
+        decoder_layers.append(input_dim)
+        self.decoder = cp.ComplexPerceptron(activation_fn, derived_activation_fn, decoder_layers,
+                                            latent_dim, fully_hidden=False, enable_momentum=use_momentum,
+                                            momentum_coefficient=momentum_alpha)
 
-        decoder_layout: [] = layout[::-1]
-        decoder_layout.append(data_dim)
-        self.decoder = cp.ComplexPerceptron(activation_function, activation_function_derived, decoder_layout,
-                                            latent_dim, full_hidden=False, momentum=momentum, mom_alpha=mom_alpha)
+        self.optimization_errors = []
 
-        # optimizer variables
-        self.opt_err = []
+    def train(self, input_data, output_data, learning_rate):
+        self.forward_pass(input_data, training=True)
+        self.backward_pass(output_data, learning_rate)
 
-    # performs the training on the auto-encoder
-    def train(self, data_in: np.ndarray, data_out: np.ndarray, eta: float) -> None:
-        self.activation(data_in, training=True)
-        self.retro(data_out, eta)
+    def forward_pass(self, input_data, training=False):
+        encoder_output = self.encoder.activate(input_data, training_mode=training)
+        return self.decoder.activate(encoder_output, training_mode=training)
 
-    # propagates input along the encoder and decoder
-    # returns always the output
-    def activation(self, init_input: np.ndarray, training: bool = False) -> np.ndarray:
-        encoder_out: np.ndarray = self.encoder.activation(init_input, training=training)
-        return self.decoder.activation(encoder_out, training=training)
+    def encode(self, input_data):
+        return self.encoder.activate(input_data, training_mode=False)
 
-    # returns the activation out from the latent space
-    def activation_to_latent_space(self, init_input: np.ndarray) -> np.ndarray:
-        return self.encoder.activation(init_input, training=False)
+    def decode(self, latent_input):
+        return self.decoder.activate(latent_input, training_mode=False)
 
-    # returns the activation value of the decoder from the latent space (generate things)
-    def activation_from_latent_space(self, init_input: np.ndarray) -> np.ndarray:
-        return self.decoder.activation(init_input, training=False)
+    def backward_pass(self, expected_output, learning_rate):
+        output_dimension = len(expected_output)
+        sup_w, sup_delta = self.decoder.backpropagate(expected_output, learning_rate,
+                                                      np.empty(output_dimension), np.empty(output_dimension))
+        return self.encoder.backpropagate(expected_output, learning_rate, sup_w, sup_delta)
 
-    # retro-propagates the difference with the expected out through the auto encoder
-    # returns the input on retro-propagation
-    def retro(self, expected_out: np.ndarray, eta: float) -> (np.ndarray, np.ndarray):
-        out_dim: int = len(expected_out)
-        sup_w, sup_delta = self.decoder.retro(expected_out, eta, np.empty(out_dim), np.empty(out_dim))
-        return self.encoder.retro(expected_out, eta, sup_w, sup_delta)
+    def initialize_weights(self, reference, normalize_by_length=False):
+        self.encoder.randomize_weights(reference, normalize_by_length)
+        self.decoder.randomize_weights(reference, normalize_by_length)
 
-    # initially the weights (w) start with 0, initialize/change them
-    def randomize_w(self, ref: float, by_len: bool = False) -> None:
-        self.encoder.randomize_w(ref, by_len)
-        self.decoder.randomize_w(ref, by_len)
+    def update_weights(self):
+        self.encoder.update_weights()
+        self.decoder.update_weights()
 
-    # for epoch training updates each perceptron its weights
-    def update_w(self) -> None:
-        self.encoder.update_w()
-        self.decoder.update_w()
+    def compute_error(self, input_data, output_data, threshold, apply_threshold):
+        activation = utils.discrete(self.forward_pass(input_data)[:, 1:], threshold, apply_threshold)
+        target_output = output_data[:, 1:]
+        return np.linalg.norm(target_output - activation) ** 2 / len(target_output)
 
-    # calculates the error of the auto-encoder
-    def error(self, data_in: np.ndarray, data_out: np.ndarray, trust: float, use_trust: bool) -> float:
-        act: np.ndarray = f.discrete(self.activation(data_in)[:, 1:], trust, use_trust)
-        out: np.ndarray = data_out[:, 1:]
+    # Optimization Methods
 
-        return (np.linalg.norm(out - act) ** 2) / len(out)
-
-    # OPTIMIZATION METHODS
-
-    # flatten weights to 1D
     def flatten_weights(self):
-        w_matrix: [] = []
-        # append encoder weights
+        weights = []
         for layer in self.encoder.network:
-            for s_p in layer:
-                w_matrix.append(s_p.w)
-        # apend decoder weights
+            for perceptron in layer:
+                weights.append(perceptron.weights)
         for layer in self.decoder.network:
-            for s_p in layer:
-                w_matrix.append(s_p.w)
-        # flatten weights to become array
-        return np.hstack(np.array(w_matrix, dtype=object))
+            for perceptron in layer:
+                weights.append(perceptron.weights)
+        return np.hstack(np.array(weights, dtype=object))
 
-    # unflatten weights to network
-    def unflatten_weights(self, flat_w: np.ndarray):
-        w_index: int = 0
-        # append encoder weights
+    def reshape_weights(self, flat_weights):
+        weight_index = 0
         for layer in self.encoder.network:
-            for s_p in layer:
-                s_p.set_w(flat_w[w_index:w_index + len(s_p.w)])
-                w_index += len(s_p.w)
-        # apend decoder weights
+            for perceptron in layer:
+                perceptron.set_weights(flat_weights[weight_index:weight_index + len(perceptron.weights)])
+                weight_index += len(perceptron.weights)
         for layer in self.decoder.network:
-            for s_p in layer:
-                s_p.set_w(flat_w[w_index:w_index + len(s_p.w)])
-                w_index += len(s_p.w)
+            for perceptron in layer:
+                perceptron.set_weights(flat_weights[weight_index:weight_index + len(perceptron.weights)])
+                weight_index += len(perceptron.weights)
 
-    # calculate error for minimizer
-    def error_minimizer(self, flat_w: np.ndarray, data_in: np.ndarray, data_out: np.ndarray, trust: float,
-                        use_trust: bool):
-        # unflatten weights
-        self.unflatten_weights(flat_w)
-        # calculate error
-        err = self.error(data_in, data_out, trust, use_trust)
-        self.opt_err.append(err)
-        # print(f'Optimizer error: {err}')
-        return err
+    def error_for_minimization(self, flat_weights, input_data, output_data, threshold, apply_threshold):
+        self.reshape_weights(flat_weights)
+        error = self.compute_error(input_data, output_data, threshold, apply_threshold)
+        self.optimization_errors.append(error)
+        return error
 
-    # train autoencoder with minimizer
-    def train_minimizer(self, data_in: np.ndarray, data_out: np.ndarray, trust: float, use_trust: bool, method: str,
-                        max_iter: int, max_fev: int):
-        # flatten weights
-        flat_w = self.flatten_weights()
-        # optimize error
-        res = optimize.minimize(self.error_minimizer, flat_w, method=method, args=(data_in, data_out, trust, use_trust),
-                                options={'maxiter': max_iter, 'maxfev': max_fev, 'disp': True})
-        # unflatten weights
-        self.unflatten_weights(res.x)
-        # Error of the cost function
-        final_err = res.fun
-        print(f'Final error is {final_err}')
-        return final_err
+    def train_with_minimization(self, input_data, output_data, threshold, apply_threshold, optimization_method,
+                                max_iterations, max_function_evals):
+        flat_initial_weights = self.flatten_weights()
+        optimization_result = optimize.minimize(self.error_for_minimization, flat_initial_weights,
+                                                method=optimization_method,
+                                                args=(input_data, output_data, threshold, apply_threshold),
+                                                options={'maxiter': max_iterations, 'maxfev': max_function_evals,
+                                                         'disp': True})
+        self.reshape_weights(optimization_result.x)
+        final_error = optimization_result.fun
+        print(f'Final error: {final_error}')
+        return final_error

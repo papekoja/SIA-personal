@@ -1,79 +1,59 @@
 import numpy as np
 
 
-class SimplePerceptron(object):
+class SimplePerceptron:
+    def __init__(self, activation_fn, derivative_activation_fn, input_dimension: int,
+                 is_hidden: bool = False, perceptron_index: int = 0,
+                 use_momentum: bool = False, momentum_coefficient: float = 0.9):
+        self.index = perceptron_index
+        self.is_hidden = is_hidden
+        self.activation_fn = activation_fn
+        self.derivative_activation_fn = derivative_activation_fn
+        self.weights = np.zeros(input_dimension)
+        self.input_data = np.zeros(input_dimension)
+        self.previous_delta_weights = np.zeros(input_dimension)
+        self.use_momentum = use_momentum
+        self.momentum_coefficient = momentum_coefficient
+        self.weight_accumulator = np.zeros(input_dimension)
 
-    def __init__(self, activation_function, activation_function_derived,
-                 dimension: int, hidden: bool = False, index: int = 0,
-                 momentum: bool = False, mom_alpha: float = 0.9):
-        self.index = index
-        self.hidden: bool = hidden
-        self.act_func = activation_function
-        self.act_func_der = activation_function_derived
-        self.w: np.ndarray = np.zeros(dimension)
-        self.input: np.ndarray = np.zeros(dimension)
+    def backpropagate(self, target_output: np.ndarray, upper_layer_weights: np.ndarray,
+                      upper_layer_deltas: np.ndarray, learning_rate: float) -> (np.ndarray, float):
+        activation_derivative = self.derivative_activation_fn(np.dot(self.input_data, self.weights))
+        delta = self.calculate_delta(target_output, upper_layer_weights, upper_layer_deltas, activation_derivative)
+        delta_weights = learning_rate * delta * self.input_data
+        self.weight_accumulator += delta_weights
+        return self.weights, delta
 
-        # momentum correction data
-        self.prev_delta_w = np.zeros(dimension)
-        self.momentum: bool = momentum
-        self.mom_alpha: float = mom_alpha
+    def activate(self, input_array: np.ndarray, is_training: bool = False):
+        if is_training:
+            self.input_data = input_array
+        return self.activation_fn(np.dot(input_array, self.weights))
 
-        # for epoch training
-        self.accu_w = np.zeros(dimension)
-
-    # out, a 1D array, is used only in the most superior layer
-    # sup_w is a 2D matrix with all the W vectors of the superior layer
-    # sup_delta is a 1D array, resulting in all the delta values of the superior layer
-    # the two above are only used in hidden layers
-    def retro(self, out: np.ndarray, sup_w: np.ndarray, sup_delta: np.ndarray, eta: float) \
-            -> (np.ndarray, float):
-        # activation for this neuron
-        activation_derived = self.act_func_der(np.dot(self.input, self.w))
-
-        # delta sub i using the activation values
-        if not self.hidden:
-            delta = (out[self.index] - self.activation(self.input)) * activation_derived
+    def randomize_weights(self, reference_value: float, normalize_by_length: bool = False) -> None:
+        if normalize_by_length:
+            range_value = np.sqrt(1 / len(self.weights))
+            self.weights = np.random.uniform(-range_value, range_value, len(self.weights))
         else:
-            delta = np.dot(sup_delta, sup_w[:, self.index]) * activation_derived
+            self.weights = np.random.uniform(-reference_value, reference_value, len(self.weights))
 
-        # calculate the delta w
-        delta_w = (eta * delta * self.input)
+    def update_weights(self):
+        self.weights += self.weight_accumulator
+        if self.use_momentum:
+            self.weights += self.momentum_coefficient * self.previous_delta_weights
+            self.previous_delta_weights = self.weight_accumulator
+        self.weight_accumulator = np.zeros_like(self.weights)
 
-        # epoch training accumulation
-        self.accu_w += delta_w
-
-        return self.w, delta
-
-    # returns the activation value/s for the given input in this neuron
-    # returns int or float depending on the input data and activation function
-    def activation(self, input_arr: np.ndarray, training: bool = False):
-        if training:
-            self.input = input_arr
-
-        # activation for this neuron, could be int or float, or an array in case is the full dataset
-        return self.act_func(np.dot(input_arr, self.w))
-
-    # resets the w to a randomize range
-    def randomize_w(self, ref: float, by_len: bool = False) -> None:
-        if by_len:
-            self.w = np.random.uniform(-np.sqrt(1 / len(self.w)), np.sqrt(1 / len(self.w)), len(self.w))
-        else:
-            self.w = np.random.uniform(-ref, ref, len(self.w))
-
-    # for epoch training delta is the accum value
-    def update_w(self):
-        self.w += self.accu_w
-
-        # in case of momentum, calculate delta w and update values
-        if self.momentum:
-            self.w += self.mom_alpha * self.prev_delta_w
-            self.prev_delta_w = self.accu_w
-
-    def set_w(self, w):
-        self.w = w
+    def set_weights(self, new_weights):
+        self.weights = new_weights
 
     def __str__(self) -> str:
-        return f"SP=(i={self.index}, w={self.w})"
+        return f"SimplePerceptron(index={self.index}, weights={self.weights})"
 
     def __repr__(self) -> str:
-        return f"SP=(i={self.index}, w={self.w})"
+        return self.__str__()
+
+    def calculate_delta(self, target_output, upper_layer_weights, upper_layer_deltas, activation_derivative):
+        if not self.is_hidden:
+            return (target_output[self.index] - self.activate(self.input_data)) * activation_derivative
+        else:
+            return np.dot(upper_layer_deltas, upper_layer_weights[:, self.index]) * activation_derivative
